@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useDebounce } from './hooks/useDebounce';
 import { DEFAULT_VALUES } from './constants';
-import { formatCurrency } from './utils/formatters';
+import { formatCurrency, formatNumber } from './utils/formatters';
 import TopAppBar from './components/TopAppBar';
 import InputField from './components/InputField';
 import Card from './components/Card';
@@ -16,6 +16,7 @@ const App: React.FC = () => {
   const [petrolPrice, setPetrolPrice] = useLocalStorage('petrolPrice', DEFAULT_VALUES.PETROL_PRICE);
   const [mileage, setMileage] = useLocalStorage('mileage', DEFAULT_VALUES.MILEAGE);
   const [distance, setDistance] = useLocalStorage('distance', DEFAULT_VALUES.DISTANCE);
+  const [amount, setAmount] = useLocalStorage('amount', DEFAULT_VALUES.AMOUNT);
   const [theme, setTheme] = useLocalStorage('theme', 'system');
 
   const [snackbar, setSnackbar] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
@@ -23,30 +24,38 @@ const App: React.FC = () => {
   const debouncedPrice = useDebounce(petrolPrice, 250);
   const debouncedMileage = useDebounce(mileage, 250);
   const debouncedDistance = useDebounce(distance, 250);
+  const debouncedAmount = useDebounce(amount, 250);
 
   useEffect(() => {
-    if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    const isDarkMode = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    
+    if (isDarkMode) {
       document.documentElement.classList.add('dark');
-      // Update Tailwind config for dark mode colors
-      const tailwindScript = document.createElement('script');
-      tailwindScript.id = 'dark-theme-config';
-      tailwindScript.innerHTML = `
-        tailwind.config.theme.extend.colors = {
-          ...tailwind.config.theme.extend.colors,
-          'background': '#141218',
-          'on-background': '#E6E1E5',
-          'surface': '#141218',
-          'on-surface': '#E6E1E5',
-          'surface-variant': '#49454F',
-          'on-surface-variant': '#CAC4D0',
-          'surface-container-lowest': '#0F0D13',
-          'surface-container-low': '#1C1B1F',
-          'surface-container': '#201F23',
-          'surface-container-high': '#2B292D',
-          'surface-container-highest': '#363438',
-        }
-      `;
-      document.head.appendChild(tailwindScript);
+      const existingScript = document.getElementById('dark-theme-config');
+      if (!existingScript) {
+        const tailwindScript = document.createElement('script');
+        tailwindScript.id = 'dark-theme-config';
+        tailwindScript.innerHTML = `
+          tailwind.config.theme.extend.colors = {
+            ...tailwind.config.theme.extend.colors,
+            'primary': '#D0BCFF',
+            'on-primary': '#381E72',
+            'primary-container': '#4F378B',
+            'on-primary-container': '#EADDFF',
+            'secondary': '#CCC2DC',
+            'on-secondary': '#332D41',
+            'surface': '#1C1B1F',
+            'on-surface': '#E6E1E5',
+            'surface-variant': '#49454F',
+            'on-surface-variant': '#CAC4D0',
+            'outline': '#938F99',
+            'background': '#141218',
+            'inverse-surface': '#E6E1E5',
+            'inverse-on-surface': '#313033',
+          }
+        `;
+        document.head.appendChild(tailwindScript);
+      }
     } else {
       document.documentElement.classList.remove('dark');
       document.getElementById('dark-theme-config')?.remove();
@@ -64,26 +73,33 @@ const App: React.FC = () => {
     const price = Number(debouncedPrice) || 0;
     const mil = Number(debouncedMileage) || 1;
     const dist = Number(debouncedDistance) || 0;
+    const amt = Number(debouncedAmount) || 0;
+    const tankSize = DEFAULT_VALUES.TANK_SIZE;
 
-    const costPerKm = price / mil;
+    const costPerKm = price > 0 && mil > 0 ? price / mil : 0;
     const dailyCost = costPerKm * dist;
     const monthlyCost = dailyCost * 30;
+    const tankRange = mil * tankSize;
+    const tankCost = price * tankSize;
+    const litresForAmount = price > 0 ? amt / price : 0;
+    const rangeForAmount = litresForAmount * mil;
 
-    return { costPerKm, dailyCost, monthlyCost };
-  }, [debouncedPrice, debouncedMileage, debouncedDistance]);
+    return { costPerKm, dailyCost, monthlyCost, tankRange, tankCost, litresForAmount, rangeForAmount };
+  }, [debouncedPrice, debouncedMileage, debouncedDistance, debouncedAmount]);
 
-  const { costPerKm, dailyCost, monthlyCost } = calculations;
+  const { costPerKm, dailyCost, monthlyCost, tankRange, tankCost, litresForAmount, rangeForAmount } = calculations;
   
   useEffect(() => {
-    document.title = `₹${dailyCost.toFixed(2)}/day | Fuel Calc`;
+    document.title = `${formatCurrency(dailyCost)}/day | Fuel Calc`;
   }, [dailyCost]);
 
   const handleReset = useCallback(() => {
     setPetrolPrice(DEFAULT_VALUES.PETROL_PRICE);
     setMileage(DEFAULT_VALUES.MILEAGE);
     setDistance(DEFAULT_VALUES.DISTANCE);
+    setAmount(DEFAULT_VALUES.AMOUNT);
     showSnackbar('Inputs reset to default values.');
-  }, [setPetrolPrice, setMileage, setDistance]);
+  }, [setPetrolPrice, setMileage, setDistance, setAmount]);
   
   const showSnackbar = (message: string) => {
     setSnackbar({ message, visible: true });
@@ -91,7 +107,16 @@ const App: React.FC = () => {
   };
 
   const handleShare = useCallback(async () => {
-    const shareText = `My daily fuel cost is ${formatCurrency(dailyCost)}, with my bike's mileage of ${mileage} km/l at a petrol price of ${formatCurrency(petrolPrice)}/litre. Calculated with Rapido Fuel Calculator.`;
+    const shareText = `📊 *Rapido Fuel Summary*
+Petrol: ${formatCurrency(petrolPrice)}/L
+Mileage: ${mileage} km/L
+Daily Run: ${distance} km
+--------------------
+*Cost/km: ${formatCurrency(costPerKm)}*
+*Daily Cost: ${formatCurrency(dailyCost)}*
+--------------------
+Full Tank (${DEFAULT_VALUES.TANK_SIZE}L) gives ~${formatNumber(tankRange, 0)} km range.
+    `;
     
     if (navigator.share) {
       try {
@@ -111,66 +136,102 @@ const App: React.FC = () => {
         showSnackbar('Failed to copy results.');
       }
     }
-  }, [dailyCost, mileage, petrolPrice]);
+  }, [dailyCost, mileage, petrolPrice, costPerKm, tankRange]);
 
   return (
-    <div className="min-h-screen bg-background transition-colors duration-300">
+    <div className="min-h-screen bg-background text-on-background transition-colors duration-300">
       <TopAppBar theme={theme} toggleTheme={toggleTheme} />
-      <main className="p-4 pt-20 pb-24 max-w-4xl mx-auto space-y-6">
-        <section id="inputs">
-          <h2 className="text-xl font-medium text-on-surface-variant mb-4">Inputs</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <InputField
-              id="petrol-price"
-              label="Petrol Price"
-              unit="₹/L"
-              value={petrolPrice}
-              onChange={setPetrolPrice}
-              min={80}
-              max={130}
-              step={0.01}
-            />
-            <InputField
-              id="mileage"
-              label="Bike Mileage"
-              unit="km/L"
-              value={mileage}
-              onChange={setMileage}
-              min={30}
-              max={80}
-              step={1}
-            />
-            <InputField
-              id="distance"
-              label="Daily Distance"
-              unit="km"
-              value={distance}
-              onChange={setDistance}
-              min={10}
-              max={300}
-              step={1}
-            />
-          </div>
-           <div className="flex justify-end mt-4">
-              <button onClick={handleReset} className="px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-full transition-colors">Reset to Defaults</button>
-           </div>
-        </section>
+      <main className="p-4 pt-20 pb-24 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Column 1: Inputs & Scenarios */}
+          <div className="flex flex-col gap-4">
+            <Card>
+              <h2 className="text-lg font-bold text-secondary flex items-center gap-2 mb-2">
+                <span className="material-symbols-outlined">input</span>Inputs
+              </h2>
+              <p className="text-sm text-on-surface-variant mb-4">
+                अपने शहर का पेट्रोल रेट और बाइक की average डालें। सभी बदलाव तुरंत save और calculate होते हैं।
+              </p>
+              <div className="space-y-4">
+                 <InputField
+                  id="petrol-price"
+                  label="Petrol Price"
+                  unit="₹/L"
+                  value={petrolPrice}
+                  onChange={setPetrolPrice}
+                  min={80}
+                  max={130}
+                  step={0.01}
+                />
+                <InputField
+                  id="mileage"
+                  label="Bike Mileage"
+                  unit="km/L"
+                  value={mileage}
+                  onChange={setMileage}
+                  min={30}
+                  max={80}
+                  step={1}
+                />
+                <InputField
+                  id="distance"
+                  label="Daily Distance"
+                  unit="km"
+                  value={distance}
+                  onChange={setDistance}
+                  min={10}
+                  max={300}
+                  step={1}
+                />
+              </div>
+            </Card>
 
-        <section id="results">
-          <h2 className="text-xl font-medium text-on-surface-variant mb-4">Results</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <StatCard label="Daily Cost" value={formatCurrency(dailyCost)} />
-            <StatCard label="Monthly Cost" value={formatCurrency(monthlyCost)} />
-            <StatCard label="Cost per KM" value={formatCurrency(costPerKm)} />
+            <Card>
+              <h2 className="text-lg font-bold text-secondary flex items-center gap-2 mb-2">
+                <span className="material-symbols-outlined">rule</span>Scenarios
+              </h2>
+              <p className="text-sm text-on-surface-variant mb-4">
+                अलग-अलग mileage पर தினசரி செலவுகளைப் பார்க்கவும்.
+              </p>
+              <ScenarioTable petrolPrice={debouncedPrice} />
+            </Card>
           </div>
-        </section>
 
-        <section id="scenarios">
-          <h2 className="text-xl font-medium text-on-surface-variant mb-4">Scenarios</h2>
-          <Card>
-            <ScenarioTable petrolPrice={debouncedPrice} />
-          </Card>
-        </section>
+          {/* Column 2: Results */}
+          <div className="flex flex-col gap-4">
+             <Card>
+                <h2 className="text-lg font-bold text-secondary flex items-center gap-2 mb-4">
+                    <span className="material-symbols-outlined">monitoring</span>Results
+                </h2>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                    <StatCard label="Fuel Cost / day" value={formatCurrency(dailyCost)} />
+                    <StatCard label="Fuel Cost / km" value={formatCurrency(costPerKm)} />
+                    <StatCard label="Full Tank Range" value={`${formatNumber(tankRange, 0)} km`} />
+                    <StatCard label="Full Tank Cost" value={formatCurrency(tankCost)} />
+                </div>
+                
+                <p className="text-sm font-medium text-on-surface-variant mb-2">Quick Refill Check:</p>
+                <InputField
+                  id="amount"
+                  label="Refill Amount"
+                  unit="₹"
+                  value={amount}
+                  onChange={setAmount}
+                  min={50}
+                  max={1000}
+                  step={10}
+                />
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                    <StatCard label="₹ Amount → Litres" value={`${formatNumber(litresForAmount, 2)} L`} />
+                    <StatCard label="₹ Amount → Range" value={`${formatNumber(rangeForAmount, 0)} km`} />
+                </div>
+                
+                <div className="flex justify-start mt-6">
+                    <button onClick={handleReset} className="px-6 py-2.5 text-sm font-medium text-primary hover:bg-primary/10 rounded-full transition-colors">Reset to Defaults</button>
+                </div>
+             </Card>
+          </div>
+        </div>
       </main>
       <FAB onClick={handleShare} />
       <Snackbar message={snackbar.message} isVisible={snackbar.visible} />

@@ -5,7 +5,7 @@ import type { CardProps } from '../types';
 const Card: React.FC<CardProps> = ({ children, className = '' }) => {
   return (
     <div
-      className={`bg-surface-container-low dark:bg-surface-container-low rounded-2xl p-4 transition-colors duration-300 ${className}`}
+      className={`bg-surface dark:bg-surface rounded-2xl p-6 transition-colors duration-300 border border-transparent ${className}`}
     >
       {children}
     </div>

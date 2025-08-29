@@ -1,6 +1,5 @@
 
 import React from 'react';
-import Card from './Card';
 import type { InputFieldProps } from '../types';
 
 const InputField: React.FC<InputFieldProps> = ({ id, label, unit, value, onChange, min, max, step }) => {
@@ -20,40 +19,40 @@ const InputField: React.FC<InputFieldProps> = ({ id, label, unit, value, onChang
   const progress = ((value - min) / (max - min)) * 100;
 
   return (
-    <Card className="p-4 space-y-3">
-      <div className="flex justify-between items-baseline">
-        <label htmlFor={id} className="text-on-surface-variant text-sm font-medium">
-          {label}
-        </label>
-        <div className="flex items-center bg-surface-container-highest dark:bg-surface-container-highest rounded-full px-3 py-1">
-          <input
-            type="number"
-            id={id}
-            value={value}
-            onChange={handleInputChange}
-            min={min}
-            max={max}
-            step={step}
-            className="w-20 bg-transparent text-on-surface font-medium text-right outline-none appearance-none [-moz-appearance:textfield]"
-          />
-          <span className="text-on-surface-variant text-sm ml-1">{unit}</span>
-        </div>
-      </div>
-      <div className="relative h-5 flex items-center">
+    <div className="space-y-2">
+      <div className="relative">
         <input
-          type="range"
+          type="number"
+          id={id}
           value={value}
-          onChange={handleSliderChange}
+          onChange={handleInputChange}
           min={min}
           max={max}
           step={step}
-          className="w-full h-1 bg-surface-variant rounded-full appearance-none cursor-pointer slider-thumb"
-          style={{ 
-              background: `linear-gradient(to right, #6750A4 ${progress}%, #CAC4D0 ${progress}%)`
-          }}
+          placeholder=" " // Required for :placeholder-shown selector
+          className="w-full bg-transparent text-on-surface font-medium border border-outline focus:border-primary focus:outline-none rounded-lg p-4 pt-6 appearance-none [-moz-appearance:textfield]"
         />
+        <label 
+          htmlFor={id} 
+          className="absolute top-1 left-4 text-xs text-primary transition-all pointer-events-none"
+        >
+          {label} ({unit})
+        </label>
       </div>
-    </Card>
+      <input
+        type="range"
+        value={value}
+        onChange={handleSliderChange}
+        min={min}
+        max={max}
+        step={step}
+        className="w-full h-1 bg-surface-variant rounded-full appearance-none cursor-pointer slider-thumb"
+        style={{ 
+            background: `linear-gradient(to right, #6750A4 ${progress}%, #CAC4D0 ${progress}%)`
+        }}
+        aria-label={`${label} slider`}
+      />
+    </div>
   );
 };
 

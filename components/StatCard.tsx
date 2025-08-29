@@ -1,14 +1,13 @@
 
 import React, { memo } from 'react';
-import Card from './Card';
 import type { StatCardProps } from '../types';
 
 const StatCard: React.FC<StatCardProps> = ({ label, value }) => {
   return (
-    <Card className="p-4 flex flex-col items-start justify-center">
-      <p className="text-sm text-on-surface-variant">{label}</p>
-      <p className="text-2xl font-medium text-primary mt-1">{value}</p>
-    </Card>
+    <div className="bg-surface-variant/50 dark:bg-surface-variant/50 p-4 rounded-2xl">
+      <p className="text-sm text-on-surface-variant mb-1">{label}</p>
+      <p className="text-xl font-bold text-on-surface">{value}</p>
+    </div>
   );
 };
 
