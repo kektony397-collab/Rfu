@@ -1,0 +1,5 @@
+{
+  "name": "Copy of Rapido Fuel Calculator PWA",
+  "description": "A comprehensive Progressive Web App built with React and TypeScript to calculate fuel costs for Rapido rides. It features an offline-first experience, Material Design 3 UI, and real-time calculation with scenario planning.",
+  "requestFramePermissions": []
+}

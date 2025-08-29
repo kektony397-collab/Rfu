@@ -1,0 +1,6 @@
+
+export const DEFAULT_VALUES = {
+  PETROL_PRICE: 104.21,
+  MILEAGE: 55,
+  DISTANCE: 100,
+};
