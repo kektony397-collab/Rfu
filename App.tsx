@@ -4,6 +4,8 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { useDebounce } from './hooks/useDebounce';
 import { DEFAULT_VALUES } from './constants';
 import { formatCurrency, formatNumber } from './utils/formatters';
+import { exportToPDF } from './utils/pdfExporter';
+import { themes, THEME_NAMES } from './themes';
 import TopAppBar from './components/TopAppBar';
 import InputField from './components/InputField';
 import Card from './components/Card';
@@ -17,7 +19,7 @@ const App: React.FC = () => {
   const [mileage, setMileage] = useLocalStorage('mileage', DEFAULT_VALUES.MILEAGE);
   const [distance, setDistance] = useLocalStorage('distance', DEFAULT_VALUES.DISTANCE);
   const [amount, setAmount] = useLocalStorage('amount', DEFAULT_VALUES.AMOUNT);
-  const [theme, setTheme] = useLocalStorage('theme', 'system');
+  const [theme, setTheme] = useLocalStorage('theme', 'default');
 
   const [snackbar, setSnackbar] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
 
@@ -27,45 +29,30 @@ const App: React.FC = () => {
   const debouncedAmount = useDebounce(amount, 250);
 
   useEffect(() => {
-    const isDarkMode = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    
-    if (isDarkMode) {
+    const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const currentTheme = themes[theme === 'system' ? (isSystemDark ? 'dark' : 'default') : theme];
+
+    if (currentTheme.isDark) {
       document.documentElement.classList.add('dark');
-      const existingScript = document.getElementById('dark-theme-config');
-      if (!existingScript) {
-        const tailwindScript = document.createElement('script');
-        tailwindScript.id = 'dark-theme-config';
-        tailwindScript.innerHTML = `
-          tailwind.config.theme.extend.colors = {
-            ...tailwind.config.theme.extend.colors,
-            'primary': '#D0BCFF',
-            'on-primary': '#381E72',
-            'primary-container': '#4F378B',
-            'on-primary-container': '#EADDFF',
-            'secondary': '#CCC2DC',
-            'on-secondary': '#332D41',
-            'surface': '#1C1B1F',
-            'on-surface': '#E6E1E5',
-            'surface-variant': '#49454F',
-            'on-surface-variant': '#CAC4D0',
-            'outline': '#938F99',
-            'background': '#141218',
-            'inverse-surface': '#E6E1E5',
-            'inverse-on-surface': '#313033',
-          }
-        `;
-        document.head.appendChild(tailwindScript);
-      }
     } else {
       document.documentElement.classList.remove('dark');
-      document.getElementById('dark-theme-config')?.remove();
     }
+
+    const existingScript = document.getElementById('theme-config-script');
+    if (existingScript) existingScript.remove();
+    
+    const tailwindScript = document.createElement('script');
+    tailwindScript.id = 'theme-config-script';
+    tailwindScript.innerHTML = `
+      tailwind.config.theme.extend.colors = ${JSON.stringify(currentTheme.colors)};
+    `;
+    document.head.appendChild(tailwindScript);
+
   }, [theme]);
 
   const toggleTheme = useCallback(() => {
-    const themes = ['light', 'dark', 'system'];
-    const currentIndex = themes.indexOf(theme);
-    const nextTheme = themes[(currentIndex + 1) % themes.length];
+    const currentIndex = THEME_NAMES.indexOf(theme);
+    const nextTheme = THEME_NAMES[(currentIndex + 1) % THEME_NAMES.length];
     setTheme(nextTheme);
   }, [theme, setTheme]);
 
@@ -136,12 +123,26 @@ Full Tank (${DEFAULT_VALUES.TANK_SIZE}L) gives ~${formatNumber(tankRange, 0)} km
         showSnackbar('Failed to copy results.');
       }
     }
-  }, [dailyCost, mileage, petrolPrice, costPerKm, tankRange]);
+  }, [dailyCost, mileage, petrolPrice, costPerKm, tankRange, distance]);
+
+  const handleExportPdf = () => {
+    const data = {
+        inputs: {
+            petrolPrice,
+            mileage,
+            distance,
+            amount
+        },
+        calculations
+    };
+    exportToPDF(data);
+    showSnackbar('PDF report generated.');
+  };
 
   return (
-    <div className="min-h-screen bg-background text-on-background transition-colors duration-300">
-      <TopAppBar theme={theme} toggleTheme={toggleTheme} />
-      <main className="p-4 pt-20 pb-24 max-w-6xl mx-auto">
+    <div className="min-h-screen bg-background text-on-background transition-colors duration-300 flex flex-col">
+      <TopAppBar theme={theme} toggleTheme={toggleTheme} onExport={handleExportPdf} />
+      <main className="p-4 pt-20 pb-28 max-w-6xl mx-auto w-full flex-grow">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Column 1: Inputs & Scenarios */}
           <div className="flex flex-col gap-4">
@@ -233,6 +234,9 @@ Full Tank (${DEFAULT_VALUES.TANK_SIZE}L) gives ~${formatNumber(tankRange, 0)} km
           </div>
         </div>
       </main>
+      <footer className="text-center py-4 text-sm text-on-surface-variant">
+        Created By Yash K Pathak
+      </footer>
       <FAB onClick={handleShare} />
       <Snackbar message={snackbar.message} isVisible={snackbar.visible} />
     </div>

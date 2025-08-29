@@ -27,4 +27,5 @@ export interface ScenarioTableProps {
 export interface TopAppBarProps {
     theme: string;
     toggleTheme: () => void;
+    onExport: () => void;
 }
