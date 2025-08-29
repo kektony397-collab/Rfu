@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useDebounce } from './hooks/useDebounce';
@@ -206,15 +205,16 @@ Full Tank (${DEFAULT_VALUES.TANK_SIZE}L) gives ~${formatNumber(tankRange, 0)} km
                 </h2>
                 <div className="grid grid-cols-2 gap-3 mb-4">
                     <StatCard label="Fuel Cost / day" value={formatCurrency(dailyCost)} />
+                    <StatCard label="Fuel Cost / month" value={formatCurrency(monthlyCost)} />
                     <StatCard label="Fuel Cost / km" value={formatCurrency(costPerKm)} />
-                    <StatCard label="Full Tank Range" value={`${formatNumber(tankRange, 0)} km`} />
                     <StatCard label="Full Tank Cost" value={formatCurrency(tankCost)} />
+                    <StatCard label="Full Tank Range" value={`${formatNumber(tankRange, 0)} km`} />
                 </div>
                 
-                <p className="text-sm font-medium text-on-surface-variant mb-2">Quick Refill Check:</p>
+                <p className="text-sm font-medium text-on-surface-variant mb-2">Quick Refl Check</p>
                 <InputField
                   id="amount"
-                  label="Refill Amount"
+                  label="Refill Amnt:"
                   unit="₹"
                   value={amount}
                   onChange={setAmount}
@@ -223,8 +223,14 @@ Full Tank (${DEFAULT_VALUES.TANK_SIZE}L) gives ~${formatNumber(tankRange, 0)} km
                   step={10}
                 />
                 <div className="grid grid-cols-2 gap-3 mt-4">
-                    <StatCard label="₹ Amount → Litres" value={`${formatNumber(litresForAmount, 2)} L`} />
-                    <StatCard label="₹ Amount → Range" value={`${formatNumber(rangeForAmount, 0)} km`} />
+                    <StatCard 
+                        label={debouncedAmount > 0 ? `Litres for ${formatCurrency(debouncedAmount)}` : 'Litres for Amount'}
+                        value={`${formatNumber(litresForAmount, 2)} L`} 
+                    />
+                    <StatCard 
+                        label="Estimated Range" 
+                        value={`${formatNumber(rangeForAmount, 0)} km`} 
+                    />
                 </div>
                 
                 <div className="flex justify-start mt-6">

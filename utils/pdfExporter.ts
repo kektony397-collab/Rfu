@@ -1,4 +1,3 @@
-
 import { formatCurrency, formatNumber } from './formatters';
 import { DEFAULT_VALUES } from '../constants';
 
@@ -16,6 +15,7 @@ interface PdfData {
     calculations: {
         costPerKm: number;
         dailyCost: number;
+        monthlyCost: number;
         tankRange: number;
         tankCost: number;
         litresForAmount: number;
@@ -71,6 +71,7 @@ export const exportToPDF = (data: PdfData) => {
     // Calculated Results
     const resultsData = [
         ['Daily Fuel Cost:', formatCurrency(calculations.dailyCost)],
+        ['Monthly Fuel Cost:', formatCurrency(calculations.monthlyCost)],
         ['Cost per Kilometer:', formatCurrency(calculations.costPerKm)],
         ['Full Tank Cost:', formatCurrency(calculations.tankCost)],
         ['Full Tank Range:', `${formatNumber(calculations.tankRange, 0)} km`],
